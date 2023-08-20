@@ -10,7 +10,6 @@ import subprocess as sp
 import shlex
 import copy
 import scipy
-import cv2
 # from getdata import get_area
 
 
@@ -36,7 +35,7 @@ def set_rotation(g, azimuth=0, tilt=0):
     
     Args:
         g (Trimesh): Open3D Trimesh
-        alpha (float): viewer azimuth (0=N, 90=W, 180=S, 270=E)
+        azimuth (float): viewer azimuth (0=N, 90=W, 180=S, 270=E)
         tilt (float): tilt the mesh towards viewer
     Returns:
     """
@@ -45,7 +44,7 @@ def set_rotation(g, azimuth=0, tilt=0):
     r2 = open3d.geometry.get_rotation_matrix_from_zyx(np.array([0, 0, tilt*np.pi/180.]))
     g.rotate(r1, center=ctr).rotate(r2, center=ctr)
 
-def dump_mp4(mov, output_filename='movie.mp4', fps=60, crf=20):
+def dump_mp4(mov, output_filename='movie.mp4', fps=60, crf=18):
     """dump frames to mp4
 
     adapted from https://stackoverflow.com/a/61281547/6474403
@@ -53,6 +52,8 @@ def dump_mp4(mov, output_filename='movie.mp4', fps=60, crf=20):
     Args:
         mov (ndarray): array of movie frames (num_frames, height, width, 3) uint8
         output_filename (str): output filename (will overwrite)
+        fps (float): frame per second
+        crf (float): constant rate factor, 0-51 with 0 being lossless, and 51 being worst
     """
     width, height, n_frames= mov.shape[2], mov.shape[1], len(mov)
 
@@ -77,7 +78,8 @@ def dump_mp4(mov, output_filename='movie.mp4', fps=60, crf=20):
         # Build synthetic image for testing ("render" a video frame).
         # img = np.full((height, width, 3), 60, np.uint8)
         # cv2.putText(img, str(i+1), (width//2-100*len(str(i+1)), height//2+100), cv2.FONT_HERSHEY_DUPLEX, 10, (255, 30, 30), 20)  # Blue number
-        img = cv2.cvtColor(mov[i], cv2.COLOR_RGB2BGR)
+        #img = cv2.cvtColor(mov[i], cv2.COLOR_RGB2BGR)
+        img = mov[i][:, :, [2,1,0]]
 
         # Write raw video frame to input stream of ffmpeg sub-process.
         process.stdin.write(img.tobytes())
@@ -283,12 +285,12 @@ def twisty_viz(geoms, azimuth=0, tilt=0):
     viz.destroy_window()
     return mov
 
-def make_decimation_schedule(mx, mn, num, method='geometric'):
+def make_decimation_schedule(mx, mn, dec_steps, method='geometric'):
     """decimation schedule"""
     if method == 'geometric':
-        out = (mx*(mn/mx)**(np.arange(num)/(num-1))).astype(int)
+        out = (mx*(mn/mx)**(np.arange(dec_steps)/(dec_steps-1))).astype(int)
     elif method == 'linear':
-        out = np.linspace(mx, mn, num).astype(int)
+        out = np.linspace(mx, mn, dec_steps).astype(int)
     return out
 
 def incremental_decimation(mesh, dec_min, dec_steps, method='geometric'):
