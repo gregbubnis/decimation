@@ -12,7 +12,7 @@ setuptools.setup(
         'matplotlib',
         'scipy',
         'pandas',
-        'open3d',
+        'open3d==0.16',
         'numpy'
       ], 
     dependency_links=[],
