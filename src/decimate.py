@@ -104,7 +104,46 @@ def add_bbox_points(mesh):
     c.vertices = open3d.utility.Vector3dVector(xyz)
     return c
 
-def twisty_viz(geoms, azimuth=0, tilt=0):
+def pimp_meshes(meshes, **kwargs):
+    """Staging a list of meshes for visualization. Vertices are colored, and
+    meshes are re-oriented and re-aligned.
+
+    Args:
+        meshes (list): list of TriMesh objects
+        colormap (): Matplotlib colormap or an RGB integer 3-tuple (0-255)
+        azimuth (float): initial orientation (see `set_rotation()`)
+        tilt (float): initial orientation (see `set_rotation()`)
+    Returns:
+        meshes (list): new list of TriMesh objects (input are unchanged)
+    """
+    defaults = dict(
+        colormap=plt.cm.winter,
+        azimuth=0,
+        tilt=0,
+    )
+    colormap = kwargs.get('colormap', defaults['colormap'])
+    azimuth = kwargs.get('azimuth', defaults['azimuth'])
+    tilt = kwargs.get('tilt', defaults['tilt'])
+
+    meshes = [copy.deepcopy(x) for x in meshes]
+    # set vertex colors based on elevation
+    for x in meshes:
+        zvec = np.array(x.vertices)[:, 2]
+        zvec = (zvec-np.min(zvec))/(np.max(zvec)-np.min(zvec))
+        if isinstance(colormap, matplotlib.colors.LinearSegmentedColormap):
+            x.vertex_colors = open3d.utility.Vector3dVector(colormap(zvec)[:, 0:3])
+        elif isinstance(colormap, list):
+            x.paint_uniform_color(np.asarray(colormap)/255)
+        x.compute_vertex_normals() # so lighting works
+    # Set initial rotation and align the bbox ctrs
+    ref = np.array(meshes[0].get_axis_aligned_bounding_box().get_center())
+    for x in meshes:
+        set_rotation(x, azimuth, tilt)
+        x.translate(ref-np.array(x.get_axis_aligned_bounding_box().get_center()))
+
+    return meshes
+
+def twisty_viz(meshes, **kwargs):
     """Mesh surface visualization that cycles through a list of geometries
     while twisting back and forth.
 
@@ -119,55 +158,29 @@ def twisty_viz(geoms, azimuth=0, tilt=0):
     TODO relationship between change_field_of_view and the result??
     
     Args:
-        geoms (list): list of `open3d.geometry.Geometry`s
-        azimuth (float): view azimuth (0=North, 90=West, 180=South, 270=West)
+        meshes (list): list of `open3d.geometry.Geometry`s
+        **kwargs (dict): some visualization options
     Returns:
         mov (ndarray): rgb frames (num_frames, height, width, 3) np.uint8
     """
-    # hard coded params :(
-    colormap = plt.cm.winter
-    bg_color = [20, 20, 30] # background color
-    twist_axis = 'x'        #
-    twist_angle = 3         # total twist about the view x- or y-axis (in deg)
-    num_frames = 500        # duration of one twist/mesh animation cycle
-    pause_factor = 4        # end state pause length, relative to other geoms
-    viz_height = 640        # viz window height in pixels
-    viz_width = 640         # viz window width in pixels
-
-
-    # colormap = None
-    # colormap = [240, 240, 240]
-    bg_color = [255, 255, 255] # background color
-    #bg_color = [230, 230, 230] # background color
-    line_color = [60, 60, 60]
+    defaults = dict(
+        bg_color=[255, 255, 255],
+        twist_axis='x',
+        twist_angle=10,
+        num_frames=500,
+        pause_factor=4,
+        viz_height=640,
+        viz_width=640
+    )
+    bg_color = kwargs.get('bg_color', defaults['bg_color'])
+    twist_axis = kwargs.get('twist_axis', defaults['twist_axis'])
+    twist_angle = kwargs.get('twist_angle', defaults['twist_angle'])
+    num_frames = kwargs.get('num_frames', defaults['num_frames'])
+    pause_factor = kwargs.get('pause_factor', defaults['pause_factor'])
+    viz_height = kwargs.get('viz_height', defaults['viz_height'])
+    viz_width = kwargs.get('viz_width', defaults['viz_width'])
 
     assert num_frames%4 == 0
-
-
-
-    # set up geometries... (factor this out?)
-    # colormap first
-    for x in geoms:
-        # set vertex colors based on elevation
-        zvec = np.array(x.vertices)[:, 2]
-        zvec = (zvec-np.min(zvec))/(np.max(zvec)-np.min(zvec))
-        if isinstance(colormap, matplotlib.colors.LinearSegmentedColormap):
-            x.vertex_colors = open3d.utility.Vector3dVector(colormap(zvec)[:, 0:3])
-        elif isinstance(colormap, list):
-            x.paint_uniform_color(np.asarray(colormap)/255)
-    # Set initial rotation and alignment bbox ctrs
-    geoms = [copy.deepcopy(x) for x in geoms]
-    ref = np.array(geoms[0].get_axis_aligned_bounding_box().get_center())    
-    linesets = []
-    for x in geoms:
-        x.compute_vertex_normals()
-        # set mesh orientations and align the bounding box centers
-        set_rotation(x, azimuth, tilt)
-        x.translate(ref-np.array(x.get_axis_aligned_bounding_box().get_center()))
-        # generate linesets (felt cute, might delete later)
-        ls = open3d.geometry.LineSet.create_from_triangle_mesh(x)
-        ls.paint_uniform_color(np.array(line_color)/255.)
-        linesets.append(ls)
 
     # Set up the visualizer
     class KeyPressManager():
@@ -183,7 +196,6 @@ def twisty_viz(geoms, azimuth=0, tilt=0):
         def key_callback_pause(self, vis, action, mods):
             """pressing `space` pauses/resumes the animation"""
             if action == 1:
-                #print("# pause/resume")
                 self.pause = not self.pause
 
     viz = open3d.visualization.VisualizerWithKeyCallback()
@@ -200,30 +212,31 @@ def twisty_viz(geoms, azimuth=0, tilt=0):
     ro.background_color = np.array(bg_color)/255.
 
     # Set FOV
-    viz.add_geometry(geoms[0])
+    viz.add_geometry(meshes[0])
     viz.get_view_control().change_field_of_view(-5)
     viz.clear_geometries()
 
     # Set up the mesh and twist animation sequences
     # angular: twist left-right-right-left (returns to the start)
-    step_size = twist_angle/(num_frames/2)/(0.003*180/np.pi)  # 0.003 rad/pixel
+    step_size =twist_angle/(num_frames/2)/(0.003*180/np.pi)  # 0.003 rad/pixel
     seq = [-step_size]*int(num_frames/4) + [step_size]*int(num_frames/2) + [-step_size]*int(num_frames/4)
     # geometries: pause(first geometry)-forward-pause(last geometry)-reverse
-    stride = int((num_frames/2)//(len(geoms)+pause_factor))
-    pad = int((num_frames/2)%(len(geoms)+pause_factor))
+    stride = int((num_frames/2)//(len(meshes)+pause_factor))
+    pad = int((num_frames/2)%(len(meshes)+pause_factor))
     num_pause = stride*pause_factor+pad
-    x = list(itertools.chain(*[[i]*stride for i in range(len(geoms))]))
-    geoms_viz = [0]*num_pause+x+[len(geoms)-1]*num_pause+x[::-1]
-    geoms_iter = itertools.cycle(geoms_viz)
-    # linesets_iter = itertools.cycle(geoms_viz)
-    this_geom = geoms[next(geoms_iter)]
+    x = list(itertools.chain(*[[i]*stride for i in range(len(meshes))]))
+    meshes_viz = [0]*num_pause+x+[len(meshes)-1]*num_pause+x[::-1]
+    meshes_iter = itertools.cycle(meshes_viz)
+    # linesets_iter = itertools.cycle(meshes_viz)
+    this_geom = meshes[next(meshes_iter)]
     # this_lineset = linesets[next(linesets_iter)]
     viz.add_geometry(this_geom, reset_bounding_box=False)
+
 
     print('#----------------------------------------------------------------')
     print('# launching mesh animation with the following properties')
     print('#--------')
-    print('# number of meshes        :', len(geoms))
+    print('# number of meshes        :', len(meshes))
     print('# frames per anim cycle   :', num_frames)
     print('# twist axis              :', twist_axis)
     print('# twist step size    [deg]:', step_size)
@@ -270,7 +283,7 @@ def twisty_viz(geoms, azimuth=0, tilt=0):
             # Update the mesh
             viz.remove_geometry(this_geom, reset_bounding_box=False)
             # viz.remove_geometry(this_lineset, reset_bounding_box=False)
-            this_geom = geoms[next(geoms_iter)]
+            this_geom = meshes[next(meshes_iter)]
             # this_lineset = linesets[next(linesets_iter)]
             viz.add_geometry(this_geom, reset_bounding_box=False)
             # viz.add_geometry(this_lineset, reset_bounding_box=False)
@@ -297,10 +310,10 @@ def incremental_decimation(mesh, dec_min, dec_steps, method='geometric'):
     """make a series of decimated meshes without redundant effort"""
     num_tri = np.array(mesh.triangles).shape[0]
     schedule = make_decimation_schedule(num_tri, dec_min, dec_steps, method)
-    geoms = [mesh]
+    meshes = [mesh]
     for n in schedule[1:]:
-        geoms.append(geoms[-1].simplify_quadric_decimation(n))
-    return geoms
+        meshes.append(meshes[-1].simplify_quadric_decimation(n))
+    return meshes
 
 def make_trimesh(xyz):
     tri = scipy.spatial.Delaunay(xyz[:, :2])
@@ -315,6 +328,12 @@ if __name__ == "__main__":
 
     dec_steps = 50
     
+    viz_opts = dict(
+            colormap=plt.cm.winter,
+            #bg_color=[20, 20, 30],
+            bg_color=[255, 255, 255],
+    )
+
     # input_filename = 'topodata/data_halfdomecrop_srtm30m_0030m.csv'
     # output_filename = 'movie-halfdome.mp4'
     # azimuth, tilt, dec_min = 240, 15, 100
@@ -323,9 +342,9 @@ if __name__ == "__main__":
     # output_filename = 'movie-mammoth.mp4'
     # azimuth, tilt, dec_min = 180, 15, 200
 
-    # input_filename = 'topodata/data_morrison_srtm30m_0050m.csv'
-    # output_filename = 'movie-morrison.mp4'
-    # azimuth, tilt, dec_min = 180, 20, 300
+    input_filename = '../topodata/data_morrison_srtm30m_0050m.csv'
+    output_filename = 'movie-morrison.mp4'
+    azimuth, tilt, dec_min = 90, 30, 300
 
     # input_filename = 'topodata/data_dana_srtm30m_0040m.csv'
     # output_filename = 'movie-mtdana.mp4'
@@ -343,9 +362,9 @@ if __name__ == "__main__":
     # output_filename = 'movie-schralpine.mp4'
     # azimuth, tilt, dec_min = 180, 15, 250
 
-    input_filename = '../topodata/data_emeraldbay_srtm30m_0040m.csv'
-    output_filename = 'movie-emerald.mp4'
-    azimuth, tilt, dec_min = 90, 5, 1500
+    # input_filename = '../topodata/data_emeraldbay_srtm30m_0040m.csv'
+    # output_filename = 'movie-emerald.mp4'
+    # azimuth, tilt, dec_min = 90, 5, 1500
 
 
 
@@ -363,10 +382,14 @@ if __name__ == "__main__":
     data = pd.read_csv(input_filename, index_col=0)
 
 
+    viz_opts['azimuth'] = azimuth
+    viz_opts['tilt'] = tilt
+
 
     mesh = make_trimesh(data[['x', 'y', 'elevation']].values)
-    geoms = incremental_decimation(mesh, dec_min, dec_steps)
-    mov = twisty_viz(geoms, azimuth=azimuth, tilt=tilt)
+    meshes = incremental_decimation(mesh, dec_min, dec_steps)
+    pimped = pimp_meshes(meshes, **viz_opts)
+    mov = twisty_viz(pimped, **viz_opts)
     if mov is not None:
         dump_mp4(mov, output_filename=output_filename)
 
