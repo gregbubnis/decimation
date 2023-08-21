@@ -1,13 +1,13 @@
 
 
 # Decimation
-Chunky visualization of mountainous terrain.
+Blocky visualization of mountainous terrain
 ![mountains surrounding Emerald Bay, Lake Tahoe](media/emerald_bay_header.png)
 
 # Introduction
-Nowadays, high resolution terrain maps are widely and freely available from tools like Google Earth and popular GPS apps. Here, rather than trying to maximize accuracy and realism, the aim is to create chunky terrain visualizations that look cool while still preserving accuracy to the extent possible.
+Nowadays, high resolution terrain maps are widely and freely available from tools like Google Earth and popular GPS apps. Here, rather than trying to maximize accuracy and realism, the aim is to create blocky terrain visualizations that look cool and preserve recognizable terrain features. Preexisting computer graphics tools are well suited for this.
 
-In computer graphics, schemes to simplify complex mesh surfaces are important for reducing unnecessary processing time. One well known method is the quadric decimation algorithm devised by Garland and Heckbert in 1997. Shown below are two of their examples, one of a cow and one of a terrain map of Crater Lake. This method merges vertices adaptively so that flat, unfeatured areas (cow torso, lake surface) comprise a few large faces and shaped features (horns, crater rim) remain well resolved with smaller faces. 
+In computer graphics, schemes to simplify complex mesh surfaces are important for reducing unnecessary processing time. One well known example is quadric decimation, devised by Garland and Heckbert in 1997. Shown below are two examples from their paper, one of a cow and one of a terrain map of Crater Lake. Their method merges vertices adaptively so that flat, unfeatured areas (cow torso, lake surface) undergo many merges, and comprise a few large faces, whereas complex features (horns, crater rim) remain well resolved with smaller faces.
 
 ![alt text](media/cows.png)
 ![alt text](media/crater_lake.png)
@@ -15,7 +15,15 @@ In computer graphics, schemes to simplify complex mesh surfaces are important fo
 This is an exploratory project. So far, the goal has been to create visualizations of my favorite mountain landscapes. The workflow constists of fetching terrain data from a public API, applying this decimation algorithm and then visualizing the results.
 
 # Setup
-Conda env, pip install
+I recommend making a virtual environment (conda) then installing with pip
+
+```bash
+conda create -n myenv pip python=3.9
+
+conda activate myenv
+
+pip install git+https://github.com/gregbubnis/decimation
+```
 
 # Usage
 Jupyter notebook
