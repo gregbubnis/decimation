@@ -7,7 +7,7 @@ setuptools.setup(
     author="Greg Bubnis",
     description="blocky terrain visualization",
     long_description_content_type=open('README.md').read(),
-    packages=find_packages('src'),
+    packages=find_packages(),
     install_requires=[
         'matplotlib',
         'scipy',
