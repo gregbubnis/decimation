@@ -343,7 +343,7 @@ if __name__ == "__main__":
     # output_filename = 'movie-schralpine.mp4'
     # azimuth, tilt, dec_min = 180, 15, 250
 
-    input_filename = 'topodata/data_emeraldbay_srtm30m_0040m.csv'
+    input_filename = '../topodata/data_emeraldbay_srtm30m_0040m.csv'
     output_filename = 'movie-emerald.mp4'
     azimuth, tilt, dec_min = 90, 5, 1500
 

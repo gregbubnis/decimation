@@ -19,9 +19,7 @@ I recommend making a virtual environment (conda) then installing with pip
 
 ```bash
 conda create -n myenv pip python=3.9
-
 conda activate myenv
-
 pip install git+https://github.com/gregbubnis/decimation
 ```
 
