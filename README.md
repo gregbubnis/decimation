@@ -24,15 +24,8 @@ pip install git+https://github.com/gregbubnis/decimation
 ```
 
 # Usage
-Jupyter notebook
+Check out the demo notebook in `examples/`
 
-<!---
-[1] https://www.geom.at/terrain-triangulation/
-[2] https://maps3d.io/
-[3] https://github.com/kk7ds/gaiagpsclient
-[4] https://code.wsl.ch/snow-models/snowpack
-[5] https://snowpack.slf.ch/
-
-# things learned
-- some elevation datasets are wildly inaccurate (check out the matterhorn!)
---->
+# Gallery
+#### Mt. Dana
+![Mount Dana](media/mtdana_winter.png)
