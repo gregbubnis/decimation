@@ -15,16 +15,24 @@ In computer graphics, schemes to simplify complex mesh surfaces are important fo
 This is an exploratory project. So far, the goal has been to create visualizations of my favorite mountain landscapes. The workflow constists of fetching terrain data from a public API, applying this decimation algorithm and then visualizing the results.
 
 # Setup
-I recommend making a virtual environment (conda) then installing with pip
+It is easiest to make virtual environment (conda) and then install with pip.
 
 ```bash
+# make a conda environment
 conda create -n myenv pip python=3.9
 conda activate myenv
+
+# editable install
+git clone git@github.com:gregbubnis/decimation.git
+cd decimation
+pip install -e .
+
+# basic install
 pip install git+https://github.com/gregbubnis/decimation
 ```
 
 # Usage
-Check out the demo notebook in `examples/`
+Check out the demo jupyter notebook in `examples/`
 
 # Gallery
 #### Mt. Dana
