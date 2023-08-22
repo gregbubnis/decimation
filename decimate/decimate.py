@@ -11,22 +11,6 @@ import shlex
 import copy
 import scipy
 
-
-"""
-why open3d in python sucks
-- the documentation sucks
-- not much discussion online
-- cannot control camera in Visualizer [1] using ViewControl (seems abandoned?, does json import work?)
-- things like Visualizer.get_view_status(), listed in the API, do not exist
-
-[1] https://github.com/isl-org/Open3D/issues/1612
-[2] https://github.com/isl-org/Open3D/discussions/5932
-[3] https://github.com/isl-org/Open3D/issues/1553
-[4] https://towardsdatascience.com/python-libraries-for-mesh-and-point-cloud-visualization-part-1-daa2af36de30
-
-
-# TODO: non-manifold edges are how we get the mesh perimeter
-"""
 def set_rotation(g, azimuth=0, tilt=0):
     """rotates a Trimesh around its bounding box center. In addition to setting
     azimuth and tilt, the mesh is rotated so that elevation (data z-axis) is
@@ -54,6 +38,9 @@ def dump_mp4(mov, output_filename='movie.mp4', fps=60, crf=18):
         fps (float): frame per second
         crf (float): constant rate factor, 0-51 with 0 being lossless, and 51 being worst
     """
+    if mov is None:
+        return
+
     width, height, n_frames= mov.shape[2], mov.shape[1], len(mov)
 
     # Open ffmpeg application as sub-process
@@ -204,10 +191,8 @@ def twisty_viz(meshes, **kwargs):
     viz.create_window(width=viz_width, height=viz_height, left=50, top=50, visible=True)    
     ro = viz.get_render_option()
     ro.light_on = True
-    #ro.mesh_show_wireframe = True
-    #ro.show_coordinate_frame = True
+    ro.mesh_show_wireframe = True
     ro.mesh_show_back_face = True
-    #ro.line_width = 50
     ro.background_color = np.array(bg_color)/255.
 
     # Set FOV
@@ -226,9 +211,7 @@ def twisty_viz(meshes, **kwargs):
     x = list(itertools.chain(*[[i]*stride for i in range(len(meshes))]))
     meshes_viz = [0]*num_pause+x+[len(meshes)-1]*num_pause+x[::-1]
     meshes_iter = itertools.cycle(meshes_viz)
-    # linesets_iter = itertools.cycle(meshes_viz)
     this_geom = meshes[next(meshes_iter)]
-    # this_lineset = linesets[next(linesets_iter)]
     viz.add_geometry(this_geom, reset_bounding_box=False)
 
     print('#----------------------------------------------------------------')
@@ -240,8 +223,6 @@ def twisty_viz(meshes, **kwargs):
     print('# twist step size    [deg]:', step_size)
     print('# twist angle        [deg]:', twist_angle)
     print('# field of view      [deg]:', viz.get_view_control().get_field_of_view())
-    # print('# view height         [px]:', viz.get_view_control().convert_to_pinhole_camera_parameters().intrinsic.height)
-    # print('# view width          [px]:', viz_width)
     print('#----------------------------------------------------------------')
 
     # Run it!
@@ -251,7 +232,7 @@ def twisty_viz(meshes, **kwargs):
     while viz.poll_events():
         if kpm.capture and not kpm.pause:
             capture_this_frame = False
-            if animation_counter%num_frames == 0 and capture_counter == 0:
+            if capture_counter == 0:
                 # starting capture
                 # crop frames to have even dimensions (cannot resize visualizer)
                 pcpi = viz.get_view_control().convert_to_pinhole_camera_parameters().intrinsic                
@@ -265,26 +246,25 @@ def twisty_viz(meshes, **kwargs):
             elif 0 < capture_counter < num_frames:
                 # continue capture
                 capture_this_frame = True
-            elif animation_counter%num_frames == 0 and capture_counter > 0:
+            elif capture_counter == num_frames:
                 # we are done
                 print()
                 print('# done capture')
+                print('#--------')
                 kpm.capture = False
                 capture_counter = 0
             if capture_this_frame:
                 print('# capture frame:', capture_counter, end="\r")
                 rgb = viz.capture_screen_float_buffer(do_render=False)
-                mov[capture_counter] = (np.array(rgb)*255).astype(np.uint8)[:mov_height, :mov_width]
+                ix = animation_counter%num_frames
+                mov[ix] = (np.array(rgb)*255).astype(np.uint8)[:mov_height, :mov_width]
                 capture_counter += 1
 
         if not kpm.pause:
             # Update the mesh
             viz.remove_geometry(this_geom, reset_bounding_box=False)
-            # viz.remove_geometry(this_lineset, reset_bounding_box=False)
             this_geom = meshes[next(meshes_iter)]
-            # this_lineset = linesets[next(linesets_iter)]
             viz.add_geometry(this_geom, reset_bounding_box=False)
-            # viz.add_geometry(this_lineset, reset_bounding_box=False)
 
             if twist_axis == 'y':
                 viz.get_view_control().rotate(seq[animation_counter%len(seq)], 0, 0, 0)
@@ -323,71 +303,4 @@ def make_trimesh(xyz):
 
 
 if __name__ == "__main__":
-
     pass
-
-    #### tl;dr: easy but no option to increase quality LOL
-    # import cv2
-    # cv2.VIDEOWRITER_PROP_QUALITY = 95
-    # print(cv2.VIDEOWRITER_PROP_QUALITY)
-    # raise Exception
-    # print(mov.shape)
-    # size = (800, 600)
-    # out = cv2.VideoWriter('project_brown.mp4', cv2.VideoWriter_fourcc('m','p','4','v'), 60, size)
-    # for i in range(len(mov)):
-    #     rgb_img = cv2.cvtColor(mov[i], cv2.COLOR_RGB2BGR)
-    #     out.write(rgb_img)
-    # out.release()
-
-    #### tl;dr: passing options does not cause errors, but they are ignored and output quality sux
-    ## see https://github.com/PyAV-Org/PyAV/issues/726
-    # import av
-    # fps = 60
-    # total_frames = len(mov)
-    # container = av.open("test.mp4", mode="w")
-    # #stream = container.add_stream("h264", rate=fps, options={'b:a': '10000', 'maxrate':'10000', 'minrate':'10000'})
-    # stream = container.add_stream("libx264", rate=fps, options={'b:v':'2M', 'maxrate':'2M', 'bufsize':'1M'})
-    # stream.width = mov.shape[2]
-    # stream.height = mov.shape[1]
-    # stream.pix_fmt = "yuv420p"
-    # for x in mov:
-    #     frame = av.VideoFrame.from_ndarray(x, format="rgb24")
-    #     for packet in stream.encode(frame):
-    #         container.mux(packet)
-    # # Flush stream
-    # for packet in stream.encode():
-    #     container.mux(packet)
-    # # Close the file
-    # container.close()
-
-    ##### tl;dr: getting dependency errors that probably are due to aging OS
-    # from vidgear.gears import VideoGear
-    # from vidgear.gears import WriteGear
-    # import cv2
-    # # Open live video stream on webcam at first index(i.e. 0) device
-    # stream = VideoGear(source=0).start()
-    # # Define writer with default parameters and suitable output filename for e.g. `Output.mp4`
-    # writer = WriteGear(output="Output.mp4")
-    # # loop over
-    # while True:
-    #     # read frames from stream
-    #     frame = stream.read()
-    #     # check for frame if Nonetype
-    #     if frame is None:
-    #         break
-    #     # simulating RGB frame for example
-    #     frame_rgb = frame[:, :, ::-1]
-    #     # writing RGB frame to writer
-    #     writer.write(frame_rgb, rgb_mode=True)  # activate RGB Mode
-    #     # Show output window
-    #     cv2.imshow("Output Frame", frame)
-    #     # check for 'q' key if pressed
-    #     key = cv2.waitKey(1) & 0xFF
-    #     if key == ord("q"):
-    #         break
-    # # close output window
-    # cv2.destroyAllWindows()
-    # # safely close video stream
-    # stream.stop()
-    # # safely close writer
-    # writer.close()
