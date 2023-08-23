@@ -36,4 +36,7 @@ Check out the demo jupyter notebook in `examples/`
 
 # Gallery
 #### Mt. Dana
-![Mount Dana](media/mtdana_winter.png)
+![Mount Dana](media/mtdana_cool.png)
+
+#### Bishop, CA skyline (ft. Emerson Locke Humphreys Basin Tom)
+![Mount Dana](media/bishop_skyline_bone.png)
