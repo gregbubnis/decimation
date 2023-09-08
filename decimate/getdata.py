@@ -3,6 +3,7 @@
 import time
 import os
 import hashlib
+import itertools
 from requests import post
 from pandas import json_normalize
 import numpy as np
@@ -27,6 +28,7 @@ def get_elevation_post_opentopodata(data=None):
         print('FAIL: status_code:', r.status_code)
         return None
 
+
 def get_area(corners=None, stride=50):
     """download an area/grid from the opentopodata api
 
@@ -45,6 +47,7 @@ def get_area(corners=None, stride=50):
     """
     os.makedirs('csv_chunks', exist_ok=True)
 
+    # build the grid
     corners = np.asarray(corners)
     lon = [np.min(corners[:, 1]), np.max(corners[:, 1])]
     lat = [np.min(corners[:, 0]), np.max(corners[:, 0])]
@@ -53,17 +56,11 @@ def get_area(corners=None, stride=50):
     y_stride = stride/111319.
     lonx = np.arange(*lon, x_stride)
     laty = np.arange(*lat, y_stride)
-
-    #print('lon scale', lon_scale)
-
-    latlon = []
-    for iy, y in enumerate(laty):
-        for ix, x in enumerate(lonx):
-            latlon.append((y, x))
+    latlon = list(itertools.product(laty, lonx))
 
     # chunk the requests and then reassemble 
     chunksize = 100
-    tag = hashlib.md5((str([str(lat), str(lon), str(stride)])).encode()).hexdigest()[:8]
+    tag = hashlib.md5((str(latlon)).encode()).hexdigest()[:8]
     df_todo = pd.DataFrame(data=latlon, columns=['lat', 'lon'])
     df_todo['status'] = 0
     df_todo['chunk'] = np.arange(len(df_todo)) // chunksize
@@ -87,17 +84,19 @@ def get_area(corners=None, stride=50):
     data = pd.concat([pd.read_csv(x, index_col=0) for x in all_csv], ignore_index=True)
     data['y'] = ((data['location.lat']-np.mean(laty))*111319.).astype(int)
     data['x'] = ((data['location.lng']-np.mean(lonx))*111319.*lon_scale).astype(int)
-    uniq_x = data['x'].unique()
-    uniq_y = data['y'].unique()
-    xx = dict(zip(uniq_x, range(len(uniq_x))))
-    yy = dict(zip(uniq_y, range(len(uniq_y))))
-    data['ix'] = [xx[x] for x in data['x']]
-    data['iy'] = [yy[x] for x in data['y']]
 
     return data
 
 
 
 if __name__ == "__main__":
+
+
+    # download halfdome data at 50m resolution
+    corners = [(37.7500, -119.5430), (37.7390, -119.5280)]
+    data = get_area(corners=corners, stride=50)
+    #data.to_csv('data_halfdomecrop_srtm30m_0030m.csv', float_format='%8.4f')
+
+
 
     pass
