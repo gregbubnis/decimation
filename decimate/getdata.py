@@ -5,9 +5,26 @@ import os
 import hashlib
 import itertools
 from requests import post
+import xml.etree.ElementTree as ET
 from pandas import json_normalize
 import numpy as np
 import pandas as pd
+
+
+def parse_kml(f):
+    """parse a google earth kml file and return xyz path coordinates as ndarray
+
+    No guarantee this works with arbitrary kml or google earth versions
+
+    Args:
+        f (str): kml file
+    Returns:
+        xyz (ndarray): lat/lon/?? coords of the path in the kml file
+    """
+    tree = ET.parse(f)
+    txt = tree.find('.//{http://www.opengis.net/kml/2.2}coordinates').text
+    xyz = np.vstack([[np.asarray([float(k) for k in st.split(',')])] for st in txt.split()])
+    return xyz
 
 def get_elevation_post_opentopodata(data=None):
     """post request to the opentopodata API
