@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>mt_dana_perimeter.kml</name>
+	<StyleMap id="m_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Placemark>
+		<name>mt_dana_perimeter</name>
+		<styleUrl>#m_ylw-pushpin</styleUrl>
+		<LineString>
+			<tessellate>1</tessellate>
+			<coordinates>
+				-119.2098014907163,37.89364334034747,0 -119.2184284267349,37.88772019006205,0 -119.2417012717584,37.89240731414562,0 -119.2523312842144,37.89994763125429,0 -119.248107402187,37.91889279858812,0 -119.2507212540394,37.92848349799718,0 -119.2430688587115,37.93626624049561,0 -119.2342925014216,37.93440042341389,0 -119.2199958813181,37.94580071154746,0 -119.2107689741343,37.94335380531562,0 -119.2011354536051,37.94514593867719,0 -119.1904991542837,37.94056763164524,0 -119.180238856149,37.93191895410719,0 -119.1678270323844,37.92572832361022,0 -119.1664155163019,37.91005513655853,0 -119.1805883457282,37.90217247220418,0 -119.1906817228226,37.89995875409161,0 -119.1994657493564,37.89769739672719,0 -119.2098014907163,37.89364334034747,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+</Document>
+</kml>
