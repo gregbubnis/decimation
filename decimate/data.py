@@ -115,7 +115,7 @@ def mesh2stl(x, filename):
     for i, face in enumerate(f):
         for j in range(3):
             surf.vectors[i][j] = v[face[j], :]
-    surf.save(file
+    surf.save(file)
 
 
 if __name__ == "__main__":
