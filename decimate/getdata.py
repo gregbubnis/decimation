@@ -106,6 +106,16 @@ def get_area(perimeter=None, stride=50):
 
     return data
 
+def mesh2stl(x, filename):
+    scale = 0.01  #
+    from stl import mesh
+    f = np.array(x.triangles)
+    v = np.array(x.vertices)*scale
+    surf = mesh.Mesh(np.zeros(f.shape[0], dtype=mesh.Mesh.dtype))
+    for i, face in enumerate(f):
+        for j in range(3):
+            surf.vectors[i][j] = v[face[j], :]
+    surf.save(file
 
 
 if __name__ == "__main__":

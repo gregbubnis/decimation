@@ -14,7 +14,8 @@ setuptools.setup(
         'pandas',
         'open3d==0.16',
         'numpy',
-        'jupyter'
+        'jupyter',
+        'numpy-stl'
       ], 
     dependency_links=[],
     python_requires='>=3.6',
