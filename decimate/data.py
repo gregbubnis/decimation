@@ -57,27 +57,42 @@ def get_area(perimeter=None, stride=50):
     Args:
         perimeter (list): list of two or more (lat, lon) tuples. If two points,
           interpret as rectangle corners, otherwise, if more than two points,
-          interpert as a (sorted and closed) polygon perimeter.
+          interpret as a (sorted and closed) polygon perimeter.
         stride (float): grid spacing (in meters)
     Returns:
         data (DataFrame): `x`, `y` columns are lon and lat in meters (elevation
           is also in meters)
     """
-    os.makedirs('csv_chunks', exist_ok=True)
+    def grid_snap(x0, dx, vals):
+        """snap `vals`` to a 1D grid with point `x0`` and spacing `dx``"""
+        return x0+((vals-x0+dx*0.49)//dx)*dx
 
-    # determine lat/lon grid points to download
+    os.makedirs('csv_chunks', exist_ok=True)
     perimeter = np.asarray(perimeter)
-    lon_limits = [np.min(perimeter[:, 1]), np.max(perimeter[:, 1])]
-    lat_limits = [np.min(perimeter[:, 0]), np.max(perimeter[:, 0])]
-    lon_scale = np.abs(np.cos(np.mean(lat_limits)/180*np.pi))
-    x_stride = stride/111319./lon_scale # adjust longitude stride
-    y_stride = stride/111319.
-    lonx = np.arange(*lon_limits, x_stride)
-    laty = np.arange(*lat_limits, y_stride)
-    latlon = list(itertools.product(laty, lonx))
+
+    # convert meter stride to lat/lon stride
+    lon_scale = np.abs(np.cos(np.mean(perimeter[:, 0])/180*np.pi))
+    lon_stride = stride/111319./lon_scale
+    lat_stride = stride/111319.
+
+    # snap perimeter points to grid
+    snappy = perimeter*0
+    snappy[:, 0] = grid_snap(np.min(perimeter[:, 0]), lat_stride, perimeter[:, 0])
+    snappy[:, 1] = grid_snap(np.min(perimeter[:, 1]), lon_stride, perimeter[:, 1])
+
+    # build lat/lon grid
+    lon_limits = [np.min(snappy[:, 1]), np.max(snappy[:, 1])]
+    lat_limits = [np.min(snappy[:, 0]), np.max(snappy[:, 0])]
+    lon_vec = np.arange(*lon_limits, lon_stride)
+    lat_vec = np.arange(*lat_limits, lat_stride)
+    latlon = list(itertools.product(lat_vec, lon_vec))
     if len(perimeter) > 2:
-        polygon = shapely.geometry.Polygon(perimeter)
-        latlon = [x for x in latlon if shapely.geometry.Point(x).within(polygon)]
+        snappy_tups = [tuple(x) for x in snappy]
+        polygon = shapely.geometry.Polygon(snappy)
+        latlon = [x for x in latlon if shapely.geometry.Point(x).within(polygon) and x not in snappy_tups]
+        # perimeter points are first and not duplicated
+        latlon = snappy_tups + latlon
+        is_perimeter = [True if x in snappy_tups else False for x in latlon]
 
     # download in chunks
     chunksize = 100
@@ -101,8 +116,9 @@ def get_area(perimeter=None, stride=50):
 
     # reassemble
     data = pd.concat([pd.read_csv(x, index_col=0) for x in all_csv], ignore_index=True)
-    data['y'] = ((data['location.lat']-np.mean(laty))*111319.).astype(int)
-    data['x'] = ((data['location.lng']-np.mean(lonx))*111319.*lon_scale).astype(int)
+    data['y'] = ((data['location.lat']-np.mean(lat_vec))*111319.).astype(int)
+    data['x'] = ((data['location.lng']-np.mean(lon_vec))*111319.*lon_scale).astype(int)
+    data['is_perimeter'] = is_perimeter
 
     return data
 
